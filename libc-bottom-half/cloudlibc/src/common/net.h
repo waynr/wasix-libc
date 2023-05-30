@@ -26,7 +26,7 @@ static inline int wasi_to_sockaddr(const struct __wasi_addr_port_t *restrict pee
     if (peer_addr->tag == __WASI_ADDRESS_FAMILY_INET4) {
       struct sockaddr_in addr4;
       addr4.sin_family = AF_INET;
-      addr4.sin_port = ntohs(peer_addr->u.inet4.port);
+      addr4.sin_port = peer_addr->u.inet4.port;
       addr4.sin_addr.s_addr = *((in_addr_t*)&peer_addr->u.inet4.addr);
       memcpy(addr, &addr4, MIN(sizeof(struct sockaddr_in), *addrlen));
       *addrlen = sizeof(struct sockaddr_in);
@@ -35,7 +35,7 @@ static inline int wasi_to_sockaddr(const struct __wasi_addr_port_t *restrict pee
       addr6.sin6_family = AF_INET6;
       addr6.sin6_flowinfo = 0;
       addr6.sin6_scope_id = 0;
-      addr6.sin6_port = ntohs(peer_addr->u.inet6.port);
+      addr6.sin6_port = peer_addr->u.inet6.port;
       memcpy(&addr6.sin6_addr.s6_addr, &peer_addr->u.inet6.addr, sizeof(struct in6_addr));
       memcpy(addr, &addr6, MIN(sizeof(struct sockaddr_in6), *addrlen));
       *addrlen = sizeof(struct sockaddr_in6);
