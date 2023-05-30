@@ -752,6 +752,12 @@ install: finish
 	mkdir -p "$(INSTALL_DIR)"
 	cp -r "$(SYSROOT)/lib" "$(SYSROOT)/share" "$(SYSROOT)/include" "$(INSTALL_DIR)"
 
+update-symbols:
+	cp $(SYSROOT)/share/wasm32-wasi/defined-symbols.txt expected/wasm32-wasi/defined-symbols.txt
+	cp $(SYSROOT)/share/wasm32-wasi/include-all.c expected/wasm32-wasi/include-all.c
+	cp $(SYSROOT)/share/wasm32-wasi/predefined-macros.txt expected/wasm32-wasi/predefined-macros.txt
+	cp $(SYSROOT)/share/wasm32-wasi/undefined-symbols.txt expected/wasm32-wasi/undefined-symbols.txt
+
 clean:
 	$(RM) -r "$(OBJDIR)"
 	$(RM) -r "$(SYSROOT)"
