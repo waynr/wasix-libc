@@ -27,7 +27,7 @@ static struct {
 static volatile int lock[1];
 volatile int *const __sem_open_lockptr = lock;
 
-#define FLAGS (O_RDWR|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
+#define FLAGS (O_RDWR|O_NOFOLLOW|O_CLOEXEC)
 
 char *__shm_mapname(const char *name, char *buf)
 {
@@ -105,6 +105,7 @@ sem_t *sem_open(const char *name, int flags, ...)
 		if (flags != (O_CREAT|O_EXCL)) {
 			fd = open(name, FLAGS);
 			if (fd >= 0) {
+        printf("wasixlibcDEBUG: before mmap\n");
 				if (fstat(fd, &st) < 0 ||
 				    (map = mmap(0, sizeof(sem_t), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED) {
 					close(fd);
@@ -128,27 +129,58 @@ sem_t *sem_open(const char *name, int flags, ...)
 				errno = EINVAL;
 				goto fail;
 			}
+      printf("wasixlibcDEBUG: before sem_init\n");
 			sem_init(&newsem, 1, value);
 		}
 		/* Create a temp file with the new semaphore contents
 		 * and attempt to atomically link it as the new name */
 		clock_gettime(CLOCK_REALTIME, &ts);
 		snprintf(tmp, sizeof(tmp), "/dev/shm/tmp-%d", (int)ts.tv_nsec);
+    printf("wasixlibcDEBUG: before open\n");
 		fd = open(tmp, O_CREAT|O_EXCL|FLAGS, mode);
 		if (fd < 0) {
 			if (errno == EEXIST) continue;
 			goto fail;
 		}
-		if (write(fd, &newsem, sizeof newsem) != sizeof newsem || fstat(fd, &st) < 0 ||
-		    (map = mmap(0, sizeof(sem_t), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED) {
+    // printf("wasixlibcDEBUG: before mmap\n");
+		// if (write(fd, &newsem, sizeof newsem) != sizeof newsem || fstat(fd, &st) < 0 ||
+		//     (map = mmap(0, sizeof(sem_t), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED) {
+		// 	close(fd);
+		// 	unlink(tmp);
+		// 	goto fail;
+		// }
+    printf("wasixlibcDEBUG: before write\n");
+		if (write(fd, &newsem, sizeof newsem) != sizeof newsem) {
+      printf("wasixlibcDEBUG: before close 1\n");
 			close(fd);
+      printf("wasixlibcDEBUG: before unlink 1\n");
+			unlink(tmp);
+			goto fail;
+    }
+    printf("wasixlibcDEBUG: before fstat\n");
+    if (fstat(fd, &st) < 0) {
+      printf("wasixlibcDEBUG: before close 2\n");
+			close(fd);
+      printf("wasixlibcDEBUG: before unlink 2\n");
+			unlink(tmp);
+			goto fail;
+    }
+    printf("wasixlibcDEBUG: before mmap\n");
+    map = mmap(0, sizeof(sem_t), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    if (map == MAP_FAILED) {
+      printf("wasixlibcDEBUG: before close 3\n");
+			close(fd);
+      printf("wasixlibcDEBUG: before unlink 3\n");
 			unlink(tmp);
 			goto fail;
 		}
 		close(fd);
+    printf("wasixlibcDEBUG: before link\n");
 		e = link(tmp, name) ? errno : 0;
+    printf("wasixlibcDEBUG: before unlink\n");
 		unlink(tmp);
 		if (!e) break;
+    printf("wasixlibcDEBUG: before munmap\n");
 		munmap(map, sizeof(sem_t));
 		/* Failure is only fatal when doing an exclusive open;
 		 * otherwise, next iteration will try to open the
@@ -163,6 +195,7 @@ sem_t *sem_open(const char *name, int flags, ...)
 	LOCK(lock);
 	for (i=0; i<SEM_NSEMS_MAX && semtab[i].ino != st.st_ino; i++);
 	if (i<SEM_NSEMS_MAX) {
+    printf("wasixlibcDEBUG: before munmap\n");
 		munmap(map, sizeof(sem_t));
 		semtab[slot].sem = 0;
 		slot = i;
